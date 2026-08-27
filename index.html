@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini GAME GoGoGo</title>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+    <style>
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            /* 💡 수정됨: 밤티처럼 어두운 느낌을 싹 빼고, 청량하고 화사한 소프트 페일 그라데이션 적용 */
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%); 
+            color: #334155; 
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; 
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; user-select: none; overflow-y: auto; padding: 40px 20px; 
+            word-break: keep-all;
+        }
+
+        #game-window { 
+            width: 100%; max-width: 480px; 
+            background-color: #ffffff; 
+            border-radius: 32px; 
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08); 
+            padding: 30px 24px; position: relative; overflow: hidden; 
+            border: 1px solid #ffffff;
+        }
+
+        .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        .flash { background-color: #fee2e2 !important; transition: background-color 0.1s; }
+        @keyframes shake { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); } 30%, 50%, 70% { transform: translateX(-6px); } 40%, 60% { transform: translateX(6px); } }
+
+        .fever-mode { animation: feverBg 1s infinite alternate; }
+        @keyframes feverBg { 0% { background-color: #f0fdf4; box-shadow: inset 0 0 20px rgba(74, 222, 128, 0.2); } 100% { background-color: #fef2f2; box-shadow: inset 0 0 30px rgba(248, 113, 113, 0.3); } }
+
+        #header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            background: linear-gradient(135deg, #4f46e5, #3b82f6); 
+            border-radius: 20px; padding: 16px 20px; margin-bottom: 16px; 
+            font-size: 16px; color: #fff; 
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3); position: relative; z-index: 10; 
+        }
+        
+        #lobby-title-display { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: 0.5px; }
+        #lives-display { letter-spacing: 2px; font-size: 20px; }
+        .global-score { 
+            font-weight: 800; color: #f59e0b; background: #fff; 
+            padding: 6px 14px; border-radius: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+
+        #game-status-bar { 
+            display: none; width: 100%; justify-content: space-between; 
+            background: #f8fafc; padding: 12px 18px; border-radius: 16px; margin-bottom: 16px; 
+            border: 1px solid #e2e8f0; font-weight: 700; position: relative; z-index: 10; 
+        }
+        .timer-text { color: #ef4444; font-size: 15px; }
+        .fever-text { color: #f59e0b; font-size: 15px; }
+
+        #screen { 
+            background-color: #f1f5f9; 
+            border-radius: 24px; min-height: 440px; padding: 25px 20px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            border: 2px solid #e2e8f0; 
+            transition: background-color 0.3s; position: relative; z-index: 10; 
+        }
+
+        #ui-layer {
+            position: absolute; top: 165px; left: 24px; right: 24px; bottom: 80px; 
+            pointer-events: none; z-index: 50; border-radius: 24px; overflow: hidden;
+        }
+
+        #combo-badge { 
+            display: none; position: absolute; top: 16px; right: 16px; 
+            background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff; 
+            padding: 6px 14px; border-radius: 12px; font-size: 15px; font-weight: 800; 
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4); pointer-events: none; 
+        }
+        #combo-badge.pop { animation: comboPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes comboPop { 0% { transform: scale(0.8); opacity: 0; } 50% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+
+        .nickname-container { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 24px; }
+        .equipped-skin { font-size: 28px; background: #fff; border-radius: 50%; padding: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .nickname-input { 
+            font-family: inherit; font-size: 16px; font-weight: 600; padding: 12px 16px; 
+            border-radius: 14px; border: 2px solid #e2e8f0; outline: none; width: 180px; text-align: center; 
+            color: #334155; transition: all 0.2s; background: #f8fafc;
+        }
+        .nickname-input:focus { border-color: #f97316; background: #fff; box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.1); }
+        
+        .btn-confirm { 
+            background-color: #f97316; color: white; border: none; border-radius: 14px; padding: 12px 18px; 
+            font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; 
+        }
+        .btn-confirm:hover { background-color: #ea580c; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(234, 88, 12, 0.2); }
+        .btn-confirm:active { transform: translateY(1px); box-shadow: none; }
+        
+        .fixed-name-box { 
+            font-size: 18px; font-weight: 800; color: #c2410c; background: #ffedd5; 
+            padding: 10px 20px; border-radius: 14px; border: none; 
+        }
+
+        .game-list { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 340px; margin: 0 auto; }
+        .btn-game { 
+            background-color: #ffffff; color: #475569; border: 1px solid #e2e8f0; border-radius: 16px; 
+            padding: 14px; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02); transition: all 0.2s; 
+        }
+        .btn-game:hover { border-color: #cbd5e1; background-color: #f8fafc; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.05); } 
+        .btn-game:active { transform: translateY(1px); box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        
+        .btn-shop { 
+            background: linear-gradient(135deg, #fde047, #facc15); 
+            color: #422006; border: none; font-weight: 800; margin-bottom: 8px; 
+            box-shadow: 0 4px 10px rgba(250, 204, 21, 0.3);
+        }
+        .btn-shop:hover { background: linear-gradient(135deg, #facc15, #eab308); color: #422006; } 
+        
+        .high-score-text { font-size: 12px; font-weight: 600; color: #94a3b8; margin-top: 4px; display: block; }
+
+        #controls { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 20px; position: relative; z-index: 10; }
+        #controls:empty { display: none; margin-top: 0; }
+        
+        .btn-action { 
+            background-color: #ffffff; color: #334155; border: 1px solid #e2e8f0; border-radius: 16px; 
+            padding: 16px 20px; font-family: inherit; font-size: 17px; font-weight: 800; cursor: pointer; flex-grow: 1; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02); transition: all 0.2s; 
+        }
+        .btn-action:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(0,0,0,0.08); }
+        .btn-action:active { transform: translateY(2px); box-shadow: none; }
+        .btn-action.btn-red { background-color: #fef2f2; border-color: #fca5a5; color: #ef4444; }
+        .btn-action.btn-red:hover { background-color: #fee2e2; }
+        .btn-action.btn-exit { background-color: #f1f5f9; border-color: #e2e8f0; color: #64748b; flex-grow: 0; padding: 16px; font-size: 15px; }
+        .btn-action.btn-pause { background-color: #eff6ff; border-color: #bfdbfe; color: #3b82f6; flex-grow: 0; padding: 16px; font-size: 15px; }
+
+        .options { margin-top: 20px; display: flex; justify-content: center; gap: 16px; font-size: 14px; font-weight: 600; color: #94a3b8; align-items: center; position: relative; z-index: 10; }
+        .options label { cursor: pointer; display: flex; align-items: center; gap: 6px; transition: color 0.2s; }
+        .options label:hover { color: #64748b; }
+
+        .center-wrapper { display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; min-height: 100%; margin-top: 10px; }
+        
+        #stroop-text { 
+            font-size: 55px; font-weight: 900; letter-spacing: -1px; margin: 20px 0; 
+            text-shadow: 1px 2px 4px rgba(0, 0, 0, 0.4); 
+        }
+        
+        #dodge-grid { display: grid; grid-template-columns: repeat(7, 40px); grid-template-rows: repeat(7, 40px); gap: 4px; }
+        .dodge-cell { display: flex; justify-content: center; align-items: center; font-size: 24px; border-radius: 10px; }
+        .dodge-bg { background-color: rgba(203, 213, 225, 0.4); }
+        
+        #timing-track { display: flex; align-items: center; background: #fff; padding: 12px; border-radius: 20px; border: 2px solid #e2e8f0; margin: 20px 0; box-shadow: 0 4px 10px rgba(0,0,0,0.02); }
+        .timing-block { width: 30px; height: 30px; border-radius: 8px; margin: 0 3px; display: flex; justify-content: center; align-items: center; font-size: 16px;}
+        .timing-bg { background: #f1f5f9; }
+        .timing-target { background: #fef08a; border: 2px solid #f59e0b; }
+        .timing-fever-target { background: #fbcfe8 !important; border: 2px solid #ec4899 !important; }
+        
+        #memory-grid { display: grid; grid-template-columns: 90px 90px; gap: 16px; margin: 10px 0;}
+        .memory-btn { width: 90px; height: 90px; background-color: #fff; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.04); cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 40px; border: 1px solid #e2e8f0; transition: transform 0.1s, background-color 0.2s; }
+        .memory-btn.active { transform: scale(0.92); background-color: #e0e7ff; border-color: #a5b4fc; }
+        
+        #timeguess-text { font-size: 44px; font-weight: 900; letter-spacing: -1px; text-align: center; color: #4f46e5; margin: 20px 0; }
+
+        .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; margin-top: 10px; overflow-y: auto; max-height: 400px; padding: 5px;}
+        .shop-item { background: #fff; border-radius: 20px; padding: 16px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; transition: 0.2s;}
+        .shop-item.equipped { border-color: #6366f1; background: #e0e7ff; box-shadow: 0 8px 16px rgba(99, 102, 241, 0.15); }
+        .shop-skin { font-size: 36px; margin-bottom: 8px; }
+        .shop-desc { font-size: 12px; font-weight: 500; color: #64748b; margin-bottom: 12px; height: 36px; word-break: keep-all; line-height: 1.3;}
+        .shop-btn { background: #f1f5f9; color: #475569; border: none; border-radius: 10px; padding: 8px 12px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; width: 100%; transition: all 0.2s;}
+        .shop-btn.owned { background: #10b981; color: #fff; }
+        .shop-btn.equipped-btn { background: #6366f1; color: #fff; pointer-events: none;}
+        .shop-btn:active { transform: translateY(2px); }
+        
+        #pause-overlay { 
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(255, 255, 255, 0.6); 
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            z-index: 1000; border-radius: 32px; justify-content: center; align-items: center; 
+            color: #334155; flex-direction: column; text-align: center; 
+        }
+        .pause-title { font-size: 32px; font-weight: 900; color: #1e293b; margin-bottom: 12px; letter-spacing: -1px; }
+        .pause-btn-group { display: flex; gap: 12px; margin-top: 16px; }
+    </style>
+</head>
+<body>
+
+    <div id="game-window">
+        <!-- 일시정지 오버레이 -->
+        <div id="pause-overlay">
+            <div class="pause-title">⏸️ 게임 일시정지</div>
+            <div style="font-size:15px; font-weight: 600; color: #64748b; margin-bottom: 24px;">잠시 쉬는 중입니다!</div>
+            <div class="pause-btn-group">
+                <button class="btn-action" id="btn-resume" style="background:#3b82f6; color:#fff; border:none;">▶ 계속하기</button>
+                <button class="btn-action btn-red" id="btn-pause-exit" style="background:#fff; border:1px solid #fca5a5;">🚪 나가기</button>
+            </div>
+        </div>
+
+        <div id="header">
+            <span id="lobby-title-display" style="display: none;">🚀 미니게임 고고고!</span>
+            <span id="score-display">점수: 0</span>
+            <span id="lives-display">☁️☁️☁️</span>
+            <span class="global-score" id="coin-display">💰 0</span>
+        </div>
+        
+        <div id="game-status-bar">
+            <span id="timer-display" class="timer-text">남은 시간: 30초</span>
+            <span id="fever-display" class="fever-text">피버까지: --</span>
+        </div>
+
+        <div id="ui-layer">
+            <div id="combo-badge">🔥 0 COMBO!</div>
+        </div>
+
+        <div id="screen"></div>
+
+        <div id="controls"></div>
+
+        <div class="options">
+            <label><input type="checkbox" id="chk-motion"> 👁️ 흔들림 끄기</label>
+            <label><input type="checkbox" id="chk-mute"> 🔇 음소거</label>
+            <label id="btn-reset-data" style="cursor: pointer; color: #94a3b8; font-size: 13px; margin-left: 10px;">데이터 초기화</label>
+        </div>
+    </div>
+
+    <script>
+        /* ==============================================================
+           🎵 오락실 레트로 사운드 모듈
+           ============================================================== */
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (document.getElementById('chk-mute').checked) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            
+            if (type === 'success') { osc.type = 'square'; osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2); osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime + 0.3); gain.gain.setValueAtTime(0.05, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4); osc.start(); osc.stop(audioCtx.currentTime + 0.4); } 
+            else if (type === 'error') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.3); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3); osc.start(); osc.stop(audioCtx.currentTime + 0.3); } 
+            else if (type === 'item') { osc.type = 'sine'; osc.frequency.setValueAtTime(987.77, audioCtx.currentTime); osc.frequency.setValueAtTime(1318.51, audioCtx.currentTime + 0.08); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3); osc.start(); osc.stop(audioCtx.currentTime + 0.3); } 
+            else if (type === 'buy') { osc.type = 'triangle'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); osc.frequency.setValueAtTime(1318.51, audioCtx.currentTime + 0.15); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3); osc.start(); osc.stop(audioCtx.currentTime + 0.3); } 
+            else if (type === 'click') { osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime); gain.gain.setValueAtTime(0.05, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05); osc.start(); osc.stop(audioCtx.currentTime + 0.05); } 
+            else if (type === 'fever') { osc.type = 'square'; osc.frequency.setValueAtTime(440, audioCtx.currentTime); osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.2); osc.frequency.setValueAtTime(1318.51, audioCtx.currentTime + 0.3); gain.gain.setValueAtTime(0.05, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4); osc.start(); osc.stop(audioCtx.currentTime + 0.4); }
+        }
+
+        /* ==============================================================
+           ⚙️ 로컬 스토리지 (영구 저장) 세팅 - 상위 보스 2종 포함
+           ============================================================== */
+        const CONFIG = { dodgeSpeed: 200, timingSpeed: 80, memoryFlashTime: 600, guessTarget: 3.0 };
+        const SHOP_ITEMS = [
+            { id: 'bird', icon: '🐤', price: 0, name: '기본 병아리', desc: '아무 능력도 없어요.' },
+            { id: 'rabbit', icon: '🐰', price: 200, name: '토끼', desc: '찰칵 & 멈춰라 점수 +1' },
+            { id: 'dog', icon: '🐶', price: 400, name: '강아지', desc: '피버타임이 더 빨리 와요! (12초)' },
+            { id: 'cat', icon: '🐱', price: 600, name: '고양이', desc: '딸기 획득 시 코인 +5 대박!' },
+            { id: 'panda', icon: '🐼', price: 800, name: '판다', desc: '기억력 힌트 시간이 길어요!' },
+            { id: 'ghost', icon: '👻', price: 1500, name: '유령', desc: '피버타임 시 점수 3배!!' },
+            { id: 'fox', icon: '🦊', price: 2500, name: '여우', desc: '피버타임이 자주 와요! (10초)' },
+            { id: 'alien', icon: '👽', price: 4000, name: '외계인', desc: '목숨 4개 시작 + 모든 점수 +1' },
+            { id: 'unicorn', icon: '🦄', price: 7000, name: '유니콘', desc: '피버타임이 2배로 지속!' }, 
+            { id: 'dragon', icon: '🐉', price: 10000, name: '드래곤', desc: '목숨 5개 + 획득 코인 영구 2배!' },
+            { id: 'tiger', icon: '🐯', price: 20000, name: '호랑이', desc: '목숨 5개 + 피버타임 시 점수 무려 4배!' },
+            { id: 'king', icon: '👑', price: 50000, name: '국왕', desc: '목숨 6개 + 획득 코인 영구 3배 종결자!' }
+        ];
+
+        const defaultData = { 
+            coins: 0, unlockedSkins: ['bird'], equippedSkin: '🐤', nickname: "", isNicknameFixed: false, 
+            highScores: { stroop: 0, dodge: 0, timing: 0, memory: 0, timeguess: 0 } 
+        };
+        let myData = { ...defaultData };
+
+        try {
+            const savedData = localStorage.getItem('cuteArcadeSave');
+            if (savedData) { const parsedData = JSON.parse(savedData); myData = { ...defaultData, ...parsedData }; }
+        } catch (error) { console.error("데이터 손상. 기본값으로 덮어씁니다."); myData = { ...defaultData }; }
+        
+        function saveData(data) { myData = data; localStorage.setItem('cuteArcadeSave', JSON.stringify(myData)); }
+
+        let currentNickname = myData.nickname; 
+        let isNicknameFixed = myData.isNicknameFixed;
+
+        let isSystemPaused = false; let pauseStartTime = 0;
+        
+        function pauseGame() {
+            if(currentGameName && currentLives > 0 && !isSystemPaused) {
+                isSystemPaused = true; 
+                pauseStartTime = Date.now(); 
+                document.getElementById('pause-overlay').style.display = 'flex';
+            }
+        }
+
+        function resumeGame() {
+            if(isSystemPaused) {
+                isSystemPaused = false; 
+                document.getElementById('pause-overlay').style.display = 'none';
+                let pauseDuration = Date.now() - pauseStartTime;
+                if (currentGameName === 'timeguess' && window.guessStartTime > 0) { window.guessStartTime += pauseDuration; }
+            }
+        }
+
+        document.addEventListener("visibilitychange", () => { if (document.hidden) pauseGame(); });
+        document.getElementById('btn-resume').addEventListener('click', () => { playSound('click'); resumeGame(); });
+        document.getElementById('btn-pause-exit').addEventListener('click', () => { playSound('click'); resumeGame(); gameOver("게임을 포기하고 나갔습니다! 🏃"); });
+
+        let gameLoop = null; let currentKeyHandler = null; let isMotionReduced = false;
+        let currentLives = 3; let currentGameName = ''; let currentScore = 0; 
+        let globalTimer = null; let timeElapsed = 0; let timeLeft = 30; 
+        let isFever = false; let feverTimer = 0;
+        window.guessStartTime = 0; 
+        let currentCombo = 0;
+
+        const screen = document.getElementById('screen'); const controls = document.getElementById('controls');
+        const scoreDisplay = document.getElementById('score-display'); const livesDisplay = document.getElementById('lives-display');
+        const lobbyTitleDisplay = document.getElementById('lobby-title-display');
+        const coinDisplay = document.getElementById('coin-display'); const gameWindow = document.getElementById('game-window');
+        const statusBar = document.getElementById('game-status-bar'); const timerDisplay = document.getElementById('timer-display'); const feverDisplay = document.getElementById('fever-display');
+        const comboBadge = document.getElementById('combo-badge'); 
+
+        document.getElementById('chk-motion').addEventListener('change', (e) => { isMotionReduced = e.target.checked; });
+
+        document.getElementById('btn-reset-data').addEventListener('click', () => {
+            playSound('click');
+            if (confirm("정말 모든 데이터(코인, 스킨, 최고기록, 닉네임)를 초기화하시겠습니까?\n처음부터 다시 시작하며, 이 작업은 복구할 수 없습니다! 🚨")) {
+                localStorage.removeItem('cuteArcadeSave');
+                myData = JSON.parse(JSON.stringify(defaultData)); 
+                currentNickname = myData.nickname; isNicknameFixed = myData.isNicknameFixed; 
+                updateCoinUI(); showLobby();
+                alert("데이터가 깨끗하게 초기화되었습니다! 새 출발을 응원합니다. 🌱");
+            }
+        });
+
+        function updateCoinUI() { coinDisplay.innerText = `💰 ${myData.coins}`; }
+
+        function triggerCombo() {
+            currentCombo++;
+            comboBadge.style.display = 'block';
+            comboBadge.innerText = `🔥 ${currentCombo} COMBO!`;
+            
+            comboBadge.classList.remove('pop');
+            void comboBadge.offsetWidth; 
+            comboBadge.classList.add('pop');
+
+            if (currentCombo > 0 && currentCombo % 5 === 0) {
+                let bonusPoint = (currentCombo / 5) * 5; 
+                addScore(bonusPoint, true, false); 
+            }
+        }
+
+        function resetCombo() {
+            currentCombo = 0;
+            comboBadge.style.display = 'none';
+        }
+
+        function addScore(basePoints = 1, isItem = false, isComboBonus = false) {
+            let finalPoints = basePoints;
+            if (!isComboBonus && basePoints > 0) {
+                if (myData.equippedSkin === '🐰' && (currentGameName === 'timing' || currentGameName === 'timeguess')) finalPoints += 1;
+                if (myData.equippedSkin === '👽') finalPoints += 1;
+                
+                if (isFever) { 
+                    let multiplier = 2;
+                    if (myData.equippedSkin === '👻') multiplier = 3;
+                    if (myData.equippedSkin === '🐯') multiplier = 4;
+                    finalPoints *= multiplier; 
+                }
+                
+                if (myData.equippedSkin === '🐉') { finalPoints *= 2; }
+                if (myData.equippedSkin === '👑') { finalPoints *= 3; }
+            }
+            
+            currentScore += finalPoints; myData.coins += finalPoints; saveData(myData); 
+            if (isItem) playSound('item'); else playSound('success');
+            
+            let floatText = isComboBonus ? `+${finalPoints} 보너스!` : `+${finalPoints}`;
+            let floatColor = isComboBonus ? "#f59e0b" : (isFever ? "#ef4444" : "#4f46e5");
+            
+            scoreDisplay.innerHTML = `점수: ${currentScore} <span id="score-plus" style="color:${floatColor}; font-size:16px; text-shadow: 0px 2px 4px rgba(0,0,0,0.1); font-weight:800; position:absolute; margin-left:8px; transition: opacity 0.5s;"></span>`;
+            const plusSpan = document.getElementById('score-plus'); plusSpan.innerText = floatText;
+            setTimeout(() => { if(plusSpan) plusSpan.style.opacity = '0'; }, 600);
+            updateCoinUI();
+        }
+
+        function updateLivesUI() {
+            let maxLives = 3;
+            if (myData.equippedSkin === '👽') maxLives = 4;
+            if (myData.equippedSkin === '🐉' || myData.equippedSkin === '🐯') maxLives = 5;
+            if (myData.equippedSkin === '👑') maxLives = 6;
+            
+            let clouds = ""; for(let i=0; i<maxLives; i++) clouds += (i < currentLives) ? "☁️" : "⛈️";
+            livesDisplay.innerText = clouds;
+        }
+
+        function takeDamage(message = "앗!") {
+            currentLives--; updateLivesUI(); playSound('error'); resetCombo(); 
+            if (!isMotionReduced) { gameWindow.classList.add('shake'); screen.classList.add('flash'); setTimeout(() => { gameWindow.classList.remove('shake'); screen.classList.remove('flash'); }, 400); }
+            if (currentLives <= 0) { gameOver(message); return true; }
+            return false; 
+        }
+
+        function clearGame() {
+            clearInterval(gameLoop); clearInterval(globalTimer);
+            window.onFeverStart = null; window.onFeverEnd = null; isSystemPaused = false; document.getElementById('pause-overlay').style.display = 'none';
+            screen.classList.remove('fever-mode'); statusBar.style.display = 'none'; resetCombo(); 
+            
+            if (currentKeyHandler) { window.removeEventListener('keydown', currentKeyHandler); currentKeyHandler = null; }
+            
+            screen.innerHTML = ''; controls.innerHTML = ''; currentScore = 0; scoreDisplay.innerText = "점수: 0";
+            lobbyTitleDisplay.style.display = 'none'; scoreDisplay.style.display = 'inline'; livesDisplay.style.display = 'inline';
+            
+            let maxLives = 3;
+            if (myData.equippedSkin === '👽') maxLives = 4;
+            if (myData.equippedSkin === '🐉' || myData.equippedSkin === '🐯') maxLives = 5;
+            if (myData.equippedSkin === '👑') maxLives = 6;
+            currentLives = maxLives;
+            
+            updateLivesUI(); updateCoinUI(); isFever = false;
+        }
+
+        function appendControlButtons() {
+            const wrap = document.createElement('div');
+            wrap.style.width = '100%'; wrap.style.display = 'flex'; wrap.style.justifyContent = 'center'; wrap.style.gap = '10px';
+
+            const btnPause = document.createElement('button'); 
+            btnPause.className = "btn-action btn-pause"; 
+            btnPause.innerText = "⏸ 정지";
+            btnPause.onclick = () => { playSound('click'); pauseGame(); };
+
+            const btnExit = document.createElement('button'); 
+            btnExit.className = "btn-action btn-exit"; 
+            btnExit.innerText = "나가기🚪";
+            btnExit.onclick = () => { playSound('click'); gameOver("포기하고 나갔습니다! 🏃"); };
+            
+            wrap.appendChild(btnPause); wrap.appendChild(btnExit); controls.appendChild(wrap);
+        }
+
+        function updateTimerUI() {
+            if (currentGameName === 'timeguess') {
+                timerDisplay.innerText = `남은 시간: ⏳비밀!`;
+                if (isFever) { feverDisplay.innerHTML = `🔥 <span style="color:#ef4444;">피버타임 진행중!</span>`; } else { feverDisplay.innerText = `피버까지: ❓비밀!`; }
+            } else {
+                timerDisplay.innerText = `남은 시간: ${timeLeft}초`;
+                let feverReq = (myData.equippedSkin === '🦊') ? 10 : ((myData.equippedSkin === '🐶') ? 12 : 15);
+                if (isFever) { feverDisplay.innerHTML = `🔥 <span style="color:#ef4444;">피버타임: ${feverTimer}초</span>`; } else { let leftToFever = feverReq - (timeElapsed % feverReq); feverDisplay.innerText = `피버까지: ${leftToFever}초`; }
+            }
+        }
+
+        function startGlobalTimer(onEndCallback) {
+            statusBar.style.display = 'flex'; timeElapsed = 0; timeLeft = 30; isFever = false; feverTimer = 0; 
+            let feverReq = (myData.equippedSkin === '🦊') ? 10 : ((myData.equippedSkin === '🐶') ? 12 : 15);
+            updateTimerUI();
+
+            globalTimer = setInterval(() => {
+                if(isSystemPaused) return; 
+
+                timeLeft--; timeElapsed++;
+                if (!isFever && timeElapsed > 0 && timeElapsed % feverReq === 0) {
+                    isFever = true; 
+                    let baseFeverTime = (currentGameName === 'timeguess') ? 10 : 5;
+                    feverTimer = (myData.equippedSkin === '🦄') ? baseFeverTime * 2 : baseFeverTime; 
+                    playSound('fever'); screen.classList.add('fever-mode');
+                    if(window.onFeverStart) window.onFeverStart(); 
+                }
+                if (isFever) {
+                    feverTimer--;
+                    if (feverTimer <= 0) { isFever = false; screen.classList.remove('fever-mode'); if(window.onFeverEnd) window.onFeverEnd(); }
+                }
+                updateTimerUI();
+                
+                if (timeLeft <= 0) { clearInterval(globalTimer); onEndCallback(); }
+            }, 1000);
+        }
+
+        function showShop() {
+            clearGame();
+            scoreDisplay.style.display = 'none'; livesDisplay.style.display = 'none';
+            lobbyTitleDisplay.style.display = 'inline-block'; lobbyTitleDisplay.innerText = '🛒 캐릭터 상점';
+
+            screen.innerHTML = `<div style="font-size: 16px; font-weight: 700; color: #64748b; margin-bottom: 10px;">현재 코인: <b style="color:#f59e0b">${myData.coins}</b></div><div class="shop-grid" id="shop-items-container"></div>`;
+            const shopContainer = document.getElementById('shop-items-container');
+            SHOP_ITEMS.forEach(item => {
+                const isOwned = myData.unlockedSkins.includes(item.id); const isEquipped = myData.equippedSkin === item.icon;
+                const itemDiv = document.createElement('div'); itemDiv.className = `shop-item ${isEquipped ? 'equipped' : ''}`;
+                let btnHtml = isEquipped ? `<button class="shop-btn equipped-btn">장착 중</button>` : isOwned ? `<button class="shop-btn owned" onclick="equipSkin('${item.icon}')">장착하기</button>` : `<button class="shop-btn" onclick="buySkin('${item.id}', '${item.icon}', ${item.price})">💰 ${item.price}</button>`;
+                itemDiv.innerHTML = `<div class="shop-skin">${item.icon}</div><div style="font-size:15px; font-weight:800; margin-bottom:4px; color:#1e293b;">${item.name}</div><div class="shop-desc">${item.desc}</div>${btnHtml}`;
+                shopContainer.appendChild(itemDiv);
+            });
+            const btnBack = document.createElement('button'); btnBack.className = "btn-action"; btnBack.innerText = "◀ 로비로 돌아가기";
+            btnBack.onclick = () => { playSound('click'); showLobby(); }; controls.appendChild(btnBack);
+        }
+
+        window.buySkin = function(id, icon, price) {
+            if (myData.coins >= price) { playSound('buy'); myData.coins -= price; myData.unlockedSkins.push(id); myData.equippedSkin = icon; saveData(myData); updateCoinUI(); showShop(); } else { playSound('error'); alert("코인이 부족해요!"); }
+        }
+        window.equipSkin = function(icon) { playSound('click'); myData.equippedSkin = icon; saveData(myData); showShop(); }
+
+        function showLobby() {
+            clearGame(); currentGameName = ''; 
+            scoreDisplay.style.display = 'none'; livesDisplay.style.display = 'none';
+            lobbyTitleDisplay.style.display = 'inline-block'; lobbyTitleDisplay.innerText = '🚀 미니게임 고고고!';
+
+            let nicknameHtml = isNicknameFixed ? `<div class="nickname-container"><div class="equipped-skin">${myData.equippedSkin}</div><div class="fixed-name-box">${currentNickname}</div><button id="btn-edit-nick" class="btn-confirm">수정</button></div>` : `<div class="nickname-container"><div class="equipped-skin">${myData.equippedSkin}</div><input type="text" id="nickname-input" class="nickname-input" placeholder="이름을 적어주세요!" value="${currentNickname}"><button id="btn-fix-nick" class="btn-confirm">확인</button></div>`;
+
+            screen.innerHTML = `${nicknameHtml}<div class="game-list">
+                    <button class="btn-game btn-shop" onclick="playSound('click'); showShop()">🛒 스킨 상점 (능력치 해금)</button>
+                    <button class="btn-game" onclick="playSound('click'); startStroop()">1. 색깔 맞추기 🎨 <br><span class="high-score-text">최고 점수: ${myData.highScores.stroop}</span></button>
+                    <button class="btn-game" onclick="playSound('click'); startDodge()">2. 먹구름 피하기 ⛈️ <br><span class="high-score-text">최고 기록: ${myData.highScores.dodge}점</span></button>
+                    <button class="btn-game" onclick="playSound('click'); startTiming()">3. 별자리 찰칵 🌟 <br><span class="high-score-text">최고 점수: ${myData.highScores.timing}</span></button>
+                    <button class="btn-game" onclick="playSound('click'); startMemory()">4. 버섯 마을 기억력 🍄 <br><span class="high-score-text">최고 점수: ${myData.highScores.memory}</span></button>
+                    <button class="btn-game" onclick="playSound('click'); startTimeGuess()">5. 정확히 멈춰라! ⏱️ <br><span class="high-score-text">최고 점수: ${myData.highScores.timeguess}</span></button>
+                </div>`;
+
+            if (isNicknameFixed) { 
+                document.getElementById('btn-edit-nick').addEventListener('click', () => { 
+                    playSound('click'); isNicknameFixed = false; myData.isNicknameFixed = false; saveData(myData); showLobby(); 
+                }); 
+            } else { 
+                document.getElementById('btn-fix-nick').addEventListener('click', () => { 
+                    const inputVal = document.getElementById('nickname-input').value.trim(); 
+                    if (inputVal) { 
+                        playSound('success'); currentNickname = inputVal; isNicknameFixed = true; 
+                        myData.nickname = currentNickname; myData.isNicknameFixed = isNicknameFixed; saveData(myData); showLobby(); 
+                    } else { playSound('error'); alert('이름을 입력해 주세요!'); } 
+                }); 
+            }
+        }
+
+        function gameOver(message) {
+            clearInterval(gameLoop); clearInterval(globalTimer); statusBar.style.display = 'none'; screen.classList.remove('fever-mode');
+            if (currentKeyHandler) { window.removeEventListener('keydown', currentKeyHandler); currentKeyHandler = null; }
+            screen.innerHTML = ''; controls.innerHTML = '';
+            let isNewHigh = false;
+            if (currentGameName && currentScore > myData.highScores[currentGameName]) { myData.highScores[currentGameName] = currentScore; saveData(myData); isNewHigh = true; }
+            const displayName = isNicknameFixed ? `${currentNickname}님, ` : '';
+
+            screen.innerHTML = `<div class="center-wrapper"><div style="font-size:50px; margin-bottom:10px;">${myData.equippedSkin}</div><div style="color: #ef4444; font-size: 32px; font-weight:900; margin-bottom: 15px; letter-spacing:-1px;">게임 종료!</div><div style="font-size: 16px; margin-bottom: 20px; text-align: center; color: #64748b; line-height: 1.6;"><b style="color:#4f46e5; font-size:20px;">${displayName}</b><br>${message}<br><br>이번 획득 코인: <b style="color:#10b981">+${currentScore} 💰</b><br>현재 보유 코인: <b style="color:#f59e0b">${myData.coins} 💰</b><br>${isNewHigh ? '<br><span style="color:#fff; background:#f59e0b; padding:6px 14px; border-radius:12px; font-size:14px; font-weight:bold;">🎉 최고 기록 갱신! 🎉</span>' : ''}</div></div>`;
+            const btnLobby = document.createElement('button'); btnLobby.className = "btn-action"; btnLobby.innerText = "🏠 로비로 가기"; btnLobby.style.backgroundColor = "#4f46e5"; btnLobby.style.color = "#fff";
+            btnLobby.onclick = () => { playSound('click'); showLobby(); }; controls.appendChild(btnLobby);
+        }
+
+        /* 미니게임 1 */
+        function startStroop() {
+            clearGame(); currentGameName = 'stroop'; let currentIsMatch = false;
+            const colors = [ {name:'빨강',code:'#FF2222'}, {name:'주황',code:'#FF5500'}, {name:'노랑',code:'#FFE600'}, {name:'초록',code:'#10b981'}, {name:'파랑',code:'#3b82f6'}, {name:'보라',code:'#8b5cf6'}, {name:'분홍',code:'#ec4899'}, {name:'검정',code:'#334155'}, {name:'하양',code:'#ffffff'} ];
+            
+            screen.innerHTML = `<div class="center-wrapper"><div style="font-size:14px; font-weight:600; color:#64748b; margin-bottom:10px; text-align:center; line-height:1.4;">정답 시 2점!<br>연속성공 시 콤보 보너스!</div><div id="stroop-text"></div></div>`;
+            
+            const textDiv = document.getElementById('stroop-text');
+            const btnMatch = document.createElement('button'); btnMatch.className = "btn-action"; btnMatch.innerText = "⭕ 일치"; btnMatch.style.color = "#3b82f6";
+            const btnMismatch = document.createElement('button'); btnMismatch.className = "btn-action btn-red"; btnMismatch.innerText = "❌ 불일치";
+            controls.appendChild(btnMatch); controls.appendChild(btnMismatch); 
+            appendControlButtons(); 
+
+            function nextQuestion() {
+                const t = colors[Math.floor(Math.random() * colors.length)]; const c = colors[Math.floor(Math.random() * colors.length)];
+                if (Math.random() > 0.5) { textDiv.innerText = t.name; textDiv.style.color = t.code; currentIsMatch = true; } 
+                else { textDiv.innerText = t.name; textDiv.style.color = c.code; currentIsMatch = (t.name === c.name); }
+            }
+            
+            function handleAnswer(isMatchBtn) { 
+                if(isSystemPaused) return; 
+                if (isMatchBtn === currentIsMatch) { addScore(2); triggerCombo(); } else { takeDamage("오답이에요! 💦"); } 
+                if(currentLives > 0) nextQuestion(); 
+            }
+
+            btnMatch.onclick = () => { playSound('click'); handleAnswer(true); }; btnMismatch.onclick = () => { playSound('click'); handleAnswer(false); };
+            nextQuestion(); startGlobalTimer(() => gameOver("시간이 다 되었어요! ⏰")); 
+        }
+
+        /* 미니게임 2 */
+        function startDodge() {
+            clearGame(); currentGameName = 'dodge'; let playerX = 3; const gridSize = 7;
+            let gridData = Array(gridSize).fill().map(() => Array(gridSize).fill(0));
+            
+            screen.innerHTML = `<div class="center-wrapper">
+                <div style="font-size:14px; font-weight:700; color:#4f46e5; margin-bottom:6px; text-align:center;">💡 키보드 방향키(←, →) 조작 가능</div>
+                <div style="font-size:13px; font-weight:600; color:#64748b; margin-bottom:12px; text-align:center; white-space:nowrap;">🟡: 코인+2 / 🍓: 보너스(+10) / ⛈️: 하트 깎임</div>
+                <div id="dodge-grid"></div>
+            </div>`;
+            
+            const gridDiv = document.getElementById('dodge-grid');
+            const btnLeft = document.createElement('button'); btnLeft.className = "btn-action"; btnLeft.innerText = "◀ 왼쪽";
+            const btnRight = document.createElement('button'); btnRight.className = "btn-action"; btnRight.innerText = "오른쪽 ▶";
+            controls.appendChild(btnLeft); controls.appendChild(btnRight); 
+            appendControlButtons(); 
+
+            btnLeft.onclick = () => { if(isSystemPaused) return; if(playerX > 0) playerX--; renderDodge(); }; 
+            btnRight.onclick = () => { if(isSystemPaused) return; if(playerX < gridSize-1) playerX++; renderDodge(); };
+            currentKeyHandler = (e) => {
+                if(isSystemPaused) return;
+                if (e.key === 'ArrowLeft') { e.preventDefault(); if(playerX > 0) playerX--; renderDodge(); } 
+                else if (e.key === 'ArrowRight') { e.preventDefault(); if(playerX < gridSize-1) playerX++; renderDodge(); }
+            }; window.addEventListener('keydown', currentKeyHandler);
+
+            function renderDodge() {
+                gridDiv.innerHTML = '';
+                for(let y = 0; y < gridSize; y++) {
+                    for(let x = 0; x < gridSize; x++) {
+                        const cell = document.createElement('div'); cell.className = 'dodge-cell dodge-bg';
+                        if (gridData[y][x] === 1) cell.innerText = isFever ? '🌟' : '⛈️'; else if (gridData[y][x] === 2) cell.innerText = '🍓'; else if (gridData[y][x] === 3) cell.innerText = '🟡'; 
+                        if (y === gridSize - 1 && x === playerX) cell.innerText = myData.equippedSkin; gridDiv.appendChild(cell);
+                    }
+                }
+            }
+
+            function runDodgeLoop() {
+                if(gameLoop) clearInterval(gameLoop); let speed = isFever ? 100 : CONFIG.dodgeSpeed;
+                gameLoop = setInterval(() => {
+                    if(isSystemPaused) return; 
+                    gridData.pop(); const newRow = Array(gridSize).fill(0); const rand = Math.random();
+                    if (isFever) { if (rand > 0.2) newRow[Math.floor(Math.random() * gridSize)] = 3; } 
+                    else { if (rand > 0.75) newRow[Math.floor(Math.random() * gridSize)] = 1; else if (rand > 0.65) newRow[Math.floor(Math.random() * gridSize)] = 3; else if (rand > 0.58) newRow[Math.floor(Math.random() * gridSize)] = 2; }
+                    gridData.unshift(newRow);
+                    
+                    if (gridData[gridSize-1][playerX] === 1 && !isFever) { const isDead = takeDamage("먹구름에 맞았어요! ⚡"); gridData[gridSize-1][playerX] = 0; if(!isDead) renderDodge(); } 
+                    else if (gridData[gridSize-1][playerX] === 1 && isFever) { addScore(2, true); gridData[gridSize-1][playerX] = 0; renderDodge(); } 
+                    else if (gridData[gridSize-1][playerX] === 2) { if (myData.equippedSkin === '🐱') { addScore(15, true); } else { addScore(10, true); } gridData[gridSize-1][playerX] = 0; renderDodge(); } 
+                    else if (gridData[gridSize-1][playerX] === 3) { addScore(2, true); gridData[gridSize-1][playerX] = 0; renderDodge(); } else { renderDodge(); }
+                }, speed);
+            }
+            window.onFeverStart = () => runDodgeLoop(); window.onFeverEnd = () => runDodgeLoop();
+            runDodgeLoop(); renderDodge(); startGlobalTimer(() => gameOver("시간 종료! 완벽히 피했어요 🎉"));
+        }
+
+        /* 미니게임 3 */
+        function startTiming() {
+            clearGame(); currentGameName = 'timing'; let cursor = 0; let dir = 1; const trackLength = 9; const targetPos = 4; 
+            
+            screen.innerHTML = `<div class="center-wrapper"><div style="font-size:14px; font-weight:600; color:#64748b; margin-bottom:10px; text-align:center; line-height:1.4;">스페이스바(Space) 또는 찰칵 버튼을 누르세요!<br>(성공시 5점, 콤보가능)</div><div id="timing-track"></div></div>`;
+            
+            const trackDiv = document.getElementById('timing-track');
+            const btnStop = document.createElement('button'); btnStop.className = "btn-action"; btnStop.innerText = "📷 찰칵!"; btnStop.style.color = "#f59e0b";
+            controls.appendChild(btnStop); 
+            appendControlButtons(); 
+
+            function renderTiming() {
+                trackDiv.innerHTML = '';
+                for(let i=0; i<trackLength; i++) {
+                    const block = document.createElement('div'); block.className = "timing-block timing-bg";
+                    let isTarget = isFever ? (i >= targetPos - 1 && i <= targetPos + 1) : (i === targetPos);
+                    if(isTarget) block.classList.add(isFever ? 'timing-fever-target' : 'timing-target');
+                    if(i === cursor) block.innerText = '🌟'; trackDiv.appendChild(block);
+                }
+            }
+
+            function runTimingLoop() {
+                if(gameLoop) clearInterval(gameLoop);
+                gameLoop = setInterval(() => {
+                    if(isSystemPaused) return; 
+                    cursor += dir; if (cursor >= trackLength - 1) dir = -1; if (cursor <= 0) dir = 1; renderTiming();
+                }, CONFIG.timingSpeed);
+            }
+
+            window.onFeverStart = () => renderTiming(); window.onFeverEnd = () => renderTiming();
+
+            const handleStopAction = () => {
+                if(isSystemPaused) return; playSound('click');
+                let isHit = isFever ? (cursor >= targetPos - 1 && cursor <= targetPos + 1) : (cursor === targetPos);
+                if (isHit) { addScore(5); triggerCombo(); trackDiv.style.backgroundColor = "#fef08a"; setTimeout(() => trackDiv.style.backgroundColor = "#fff", 150); } 
+                else { takeDamage("타이밍을 놓쳤어요!"); }
+            };
+
+            btnStop.onclick = handleStopAction;
+            currentKeyHandler = (e) => { 
+                if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); if (e.repeat) return; handleStopAction(); } 
+            };
+            window.addEventListener('keydown', currentKeyHandler);
+            runTimingLoop(); renderTiming(); startGlobalTimer(() => gameOver("시간이 다 되었어요! ⏰"));
+        }
+
+        /* 미니게임 4 */
+        function startMemory() {
+            clearGame(); currentGameName = 'memory'; let level = 1; let sequence = []; let playerStep = 0; let isPlayerTurn = false;
+            
+            screen.innerHTML = `<div class="center-wrapper"><div id="memory-msg" style="margin-bottom:12px; font-size:20px; font-weight:800; color:#4f46e5; text-align:center; line-height:1.4;">기억하세요!</div><div style="font-size:13px; font-weight:600; color:#64748b; margin-bottom:15px; text-align:center;">💡 매 단계마다 완전히 새로운 패턴이 나와요!</div><div id="memory-grid"></div></div>`;
+            
+            const gridDiv = document.getElementById('memory-grid'); const msgDiv = document.getElementById('memory-msg');
+            const emojis = ['🍄', '🌸', '🍀', '🍓']; const pads = [];
+
+            emojis.forEach((emj, idx) => {
+                const pad = document.createElement('div'); pad.className = 'memory-btn'; pad.innerText = emj;
+                pad.onclick = () => handlePadClick(idx); pads.push(pad); gridDiv.appendChild(pad);
+            });
+            appendControlButtons();
+
+            function generateSequence() { sequence = []; for(let i=0; i<level; i++) { sequence.push(Math.floor(Math.random() * 4)); } }
+
+            function playSequence() {
+                isPlayerTurn = false; playerStep = 0; let expectedScore = 5 * level;
+                
+                msgDiv.innerHTML = `[레벨 ${level}] 잘 보고 기억하세요! 👀<br><span style="font-size:14px; color:#64748b; font-weight:600;">(성공시 ${expectedScore}점)</span>`;
+                
+                let step = 0; let flashTime = isFever ? 400 : (myData.equippedSkin === '🐼' ? 1000 : CONFIG.memoryFlashTime);
+                
+                gameLoop = setInterval(() => {
+                    if(isSystemPaused) return; 
+                    if (step >= sequence.length) { clearInterval(gameLoop); msgDiv.innerHTML = "이제 눌러보세요! 👉"; isPlayerTurn = true; return; }
+                    playSound('click'); const activePad = pads[sequence[step]]; activePad.classList.add('active'); 
+                    setTimeout(() => { activePad.classList.remove('active'); }, flashTime - 100);
+                    step++;
+                }, flashTime);
+            }
+
+            function handlePadClick(idx) {
+                if (!isPlayerTurn || isSystemPaused) return;
+                playSound('click'); pads[idx].classList.add('active'); setTimeout(() => pads[idx].classList.remove('active'), 150);
+                
+                if (sequence[playerStep] === idx) {
+                    playerStep++;
+                    if (playerStep === sequence.length) {
+                        let earnedScore = 5 * level; level++; addScore(earnedScore);
+                        msgDiv.innerHTML = "정답! 👏<br>새로운 패턴 준비..."; 
+                        generateSequence(); setTimeout(playSequence, 1000);
+                    }
+                } else {
+                    const isDead = takeDamage("순서가 틀렸어요!");
+                    if (!isDead) { isPlayerTurn = false; msgDiv.innerHTML = "다시 한번<br>기회를 드릴게요!"; setTimeout(() => { playSequence(); }, 1000); }
+                }
+            }
+            generateSequence(); setTimeout(playSequence, 1000); startGlobalTimer(() => gameOver("시간이 다 되었어요! ⏰"));
+        }
+
+        /* 미니게임 5 */
+        function startTimeGuess() {
+            clearGame(); currentGameName = 'timeguess'; window.guessStartTime = 0; let isRunning = false;
+            
+            screen.innerHTML = `<div class="center-wrapper">
+                <div id="timeguess-text">목표: ${CONFIG.guessTarget}초!</div>
+                <div style="font-size:14px; font-weight:600; color:#64748b; margin-top:10px; text-align:center; line-height:1.4;">
+                    버튼을 누르고 속으로 세어 멈추세요!<br>
+                    <span style="color:#3b82f6; font-weight:800;">💡 스페이스바(Space) 또는 버튼 클릭 사용 가능</span><br>
+                    (성공시 5점, 연속 콤보 보너스)
+                </div>
+                <div style="font-size:13px; font-weight:bold; color:#ef4444; margin-top:8px; text-align:center;">🔥 이 게임은 피버타임이 길게 유지됩니다!</div>
+            </div>`;
+            
+            const textDiv = document.getElementById('timeguess-text');
+            const btnAction = document.createElement('button'); btnAction.className = "btn-action"; btnAction.innerText = "시작!"; btnAction.style.color = "#4f46e5";
+            
+            btnAction.onclick = () => {
+                if(isSystemPaused) return; playSound('click');
+                if (!isRunning) { window.guessStartTime = Date.now(); isRunning = true; btnAction.innerText = "멈춰!"; btnAction.className = "btn-action btn-red"; textDiv.innerText = "마음속으로 세어보세요..."; } 
+                else {
+                    isRunning = false; const elapsed = (Date.now() - window.guessStartTime) / 1000; const diff = Math.abs(elapsed - CONFIG.guessTarget);
+                    btnAction.innerText = "다시 시작"; btnAction.className = "btn-action"; btnAction.style.color = "#4f46e5"; let allowedDiff = isFever ? 1.0 : 0.3;
+                    if (diff <= allowedDiff) { 
+                        textDiv.innerHTML = `<span style="color:#10b981">${elapsed.toFixed(2)}초! 완벽해요!</span>`; 
+                        addScore(5); triggerCombo(); 
+                    } else { 
+                        textDiv.innerHTML = `<span style="color:#ef4444">${elapsed.toFixed(2)}초! 아까워요..</span>`; takeDamage("시간이 너무 빠르거나 늦었어요!"); 
+                    }
+                }
+            };
+            controls.appendChild(btnAction); 
+            appendControlButtons();
+
+            currentKeyHandler = (e) => { 
+                if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); if (e.repeat) return; if(btnAction) btnAction.click(); } 
+            };
+            window.addEventListener('keydown', currentKeyHandler);
+            startGlobalTimer(() => gameOver("시간이 다 되었어요! ⏰"));
+        }
+
+        updateCoinUI(); showLobby();
+    </script>
+</body>
+</html>

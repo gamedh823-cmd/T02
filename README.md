@@ -3,7 +3,7 @@
 > 
 > 검증안내서 링크 [https://github.com/gamedh823-cmd/T02/blob/main/README.md]
 > 
-> 플레이 링크 [https://www.google.com/search?q=https://gamedh823-cmd.github.io/T02/]
+> 플레이 링크 [https://gamedh823-cmd.github.io/T02/]
 
 
 
@@ -15,7 +15,7 @@
 
 2.	어디로 가나요? (접속 경로)
 
-> 웹 링크 접속: [https://www.google.com/search?q=https://gamedh823-cmd.github.io/T02/]
+> 웹 링크 접속: [https://gamedh823-cmd.github.io/T02/]
 
 
 

@@ -1,5 +1,6 @@
 [SYSTEM_VERIFICATION_LOG] YU JIWON - MINI_GAME_GOGOGO & EVIDENCE
 >> System Message: 본 문서는 유지원(숭실대학교 전자정보공학부 IT융합전공)의 웹 미니게임 프로젝트 검증 안내 및 성과 내역서입니다.
+>> 검증안내서 링크 [https://github.com/gamedh823-cmd/T02/blob/main/README.md]
 >> 플레이 링크 [https://www.google.com/search?q=https://gamedh823-cmd.github.io/T02/]
 
 1. 검증 안내서 (GUIDE FOR EVALUATOR)
